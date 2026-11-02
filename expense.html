@@ -55,6 +55,19 @@
   <h1>💸 Новый расход</h1>
 
   <div class="section">
+    <div class="section-title">Раздел</div>
+    <div class="card">
+      <div class="field" data-f="category">
+        <div class="chips" id="cats"></div>
+      </div>
+      <div class="field" data-f="sub" id="subField" style="display:none">
+        <label id="subLabel">Подраздел</label>
+        <div class="chips" id="subs"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
     <div class="card">
       <div class="field" data-f="date">
         <label for="date">Дата расхода</label>
@@ -74,32 +87,10 @@
   </div>
 
   <div class="section">
-    <div class="section-title">Категория</div>
-    <div class="card">
-      <div class="field" data-f="category">
-        <div class="chips" data-group="category">
-          <button type="button" class="chip" data-v="Реклама">Реклама</button>
-          <button type="button" class="chip" data-v="Зарплата">Зарплата</button>
-          <button type="button" class="chip" data-v="Офис">Офис</button>
-          <button type="button" class="chip" data-v="Газ">Газ</button>
-          <button type="button" class="chip" data-v="Электричество">Электричество</button>
-          <button type="button" class="chip" data-v="Вода">Вода</button>
-          <button type="button" class="chip" data-v="Интернет">Интернет</button>
-          <button type="button" class="chip" data-v="Уборка офиса">Уборка офиса</button>
-          <button type="button" class="chip" data-v="Транспорт">Транспорт</button>
-          <button type="button" class="chip" data-v="Сервисы/подписки">Сервисы/подписки</button>
-          <button type="button" class="chip" data-v="Налоги">Налоги</button>
-          <button type="button" class="chip" data-v="Другое">Другое</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="section">
     <div class="card">
       <div class="field" data-f="what">
-        <label for="what">На что</label>
-        <input id="what" maxlength="120" autocomplete="off" placeholder="напр. Таргет Instagram, ноябрь">
+        <label for="what">Детали <span style="font-size:12px;opacity:.8" id="whatOpt">(необязательно)</span></label>
+        <input id="what" maxlength="120" autocomplete="off" placeholder="напр. Ноябрь, кампания «Ваке»">
       </div>
       <div class="field" data-f="comment">
         <label for="comment">Комментарий <span style="font-size:12px;opacity:.8">(необязательно)</span></label>
@@ -114,16 +105,97 @@
 
 <script>
 (function () {
-  var REQUIRED = ['date', 'amount', 'category', 'what'];
+  var REQUIRED = ['date', 'amount', 'category', 'sub'];
+
+  // Разделы и подразделы. amount/cur — автоподстановка суммы (можно изменить).
+  var SECTIONS = [
+    { name: 'Зарплата', icon: '👥', subs: [
+      { name: 'Лиза (Сбор и поиск)', amount: 750 },
+      { name: 'Антон (Заполнение)', amount: 750 },
+      { name: 'Лера (Ассистент)', amount: 500 },
+      { name: 'Гио (Переговорщик)', amount: 500 },
+      { name: 'Александр (Главный переговорщик)', amount: 300 },
+      { name: 'Артем (Главный презентатор)', amount: 300 },
+      { name: 'Вито (Генеральный директор)', amount: 750 }
+    ]},
+    { name: 'Офис', icon: '🏢', subs: [
+      { name: 'Аренда офиса', amount: 900 },
+      { name: 'Обслуживание ЖК', amount: 100, cur: '₾' },
+      { name: 'Уборка офиса' }
+    ]},
+    { name: 'Коммунальные', icon: '💡', subs: [
+      { name: 'Газ' }, { name: 'Свет' }, { name: 'Вода' }, { name: 'Интернет' }
+    ]},
+    { name: 'Реклама', icon: '📣', subs: [
+      { name: 'Meta' }, { name: 'Telegram Ads' }, { name: 'Каналы' }, { name: 'Блогеры' }
+    ]},
+    { name: 'Разработка', icon: '🛠', subs: [
+      { name: 'Фронтенд' }, { name: 'Бэкенд' }, { name: 'Дизайн' }
+    ]},
+    { name: 'Инструменты (подписки)', icon: '🔧', subs: [
+      { name: 'Hetzner (сервер)' }, { name: 'Dewatermark' }, { name: 'Другая подписка', other: true }
+    ]},
+    { name: 'Доп. услуги', icon: '🤝', subs: [
+      { name: 'Юрист' }, { name: 'Бухгалтер' }, { name: 'Сменщик', hint: 'Кого заменял и почему (напр. Лиза — болела)' }
+    ]},
+    { name: 'Доп. расходы', icon: '📦', subs: [
+      { name: 'Мебель в офис' }, { name: 'Техника (компьютеры и т.д.)' }, { name: 'Другое', other: true }
+    ]}
+  ];
 
   var tg = window.Telegram && window.Telegram.WebApp;
   var inTelegram = !!(tg && tg.initData !== undefined && tg.platform && tg.platform !== 'unknown');
-  var state = { currency: '$', category: '' };
+  var state = { currency: '$', category: '', sub: '' };
   var $ = function (id) { return document.getElementById(id); };
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   var now = new Date();
   $('date').value = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+
+  function chip(label, value, on) {
+    return '<button type="button" class="chip' + (on ? ' on' : '') + '" data-v="' + value + '">' + label + '</button>';
+  }
+  function sectionBy(name) { return SECTIONS.filter(function (x) { return x.name === name; })[0]; }
+  function subBy(sec, name) { return sec ? sec.subs.filter(function (x) { return x.name === name; })[0] : null; }
+  function setCurrency(c) {
+    state.currency = c;
+    document.querySelectorAll('[data-group="currency"] .chip').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-v') === c);
+    });
+  }
+  $('cats').innerHTML = SECTIONS.map(function (x) { return chip(x.icon + ' ' + x.name, x.name, false); }).join('');
+  $('cats').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('.chip'); if (!btn) return;
+    $('cats').querySelectorAll('.chip').forEach(function (b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    state.category = btn.getAttribute('data-v'); state.sub = '';
+    clearErr('category');
+    var sec = sectionBy(state.category);
+    $('subLabel').textContent = state.category === 'Зарплата' ? 'Сотрудник' : 'Подраздел';
+    $('subs').innerHTML = sec.subs.map(function (x) {
+      return chip(x.name + (x.amount ? ' · ' + (x.cur === '₾' ? x.amount + ' ₾' : '$' + x.amount) : ''), x.name, false);
+    }).join('');
+    $('subField').style.display = 'block';
+    updateWhat();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  });
+  $('subs').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('.chip'); if (!btn) return;
+    $('subs').querySelectorAll('.chip').forEach(function (b) { b.classList.remove('on'); });
+    btn.classList.add('on');
+    state.sub = btn.getAttribute('data-v');
+    clearErr('sub');
+    var it = subBy(sectionBy(state.category), state.sub);
+    if (it && it.amount) { $('amount').value = it.amount; setCurrency(it.cur || '$'); clearErr('amount'); }
+    updateWhat();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+  });
+  function updateWhat() {
+    var it = subBy(sectionBy(state.category), state.sub);
+    var need = !!(it && (it.other || it.hint));
+    $('whatOpt').style.display = need ? 'none' : '';
+    $('what').placeholder = it && it.hint ? it.hint : (it && it.other ? 'Что именно' : 'напр. Ноябрь, кампания «Ваке»');
+  }
 
   document.querySelectorAll('[data-group]').forEach(function (group) {
     group.addEventListener('click', function (ev) {
@@ -158,6 +230,7 @@
       amount: val('amount').replace(/\s+/g, '').replace(',', '.').replace(/[$₾]/g, ''),
       currency: state.currency,
       category: state.category,
+      sub: state.sub,
       what: val('what'),
       comment: val('comment')
     };
@@ -166,6 +239,8 @@
   function submit() {
     var d = collect();
     var bad = REQUIRED.filter(function (k) { return !d[k]; });
+    var it = subBy(sectionBy(d.category), d.sub);
+    if (it && (it.other || it.hint) && !d.what) bad.push('what');
     var amountBad = d.amount && (isNaN(Number(d.amount)) || Number(d.amount) <= 0);
     if (amountBad) bad.push('amount');
     bad.forEach(function (k) { var el = fieldEl(k); if (el) el.classList.add('err'); });
