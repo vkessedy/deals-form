@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Новая сделка</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-secondary-bg-color, #f2f2f7);
+    --card: var(--tg-theme-section-bg-color, var(--tg-theme-bg-color, #ffffff));
+    --text: var(--tg-theme-text-color, #111111);
+    --hint: var(--tg-theme-hint-color, #8e8e93);
+    --accent: var(--tg-theme-button-color, #2481cc);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --head: var(--tg-theme-section-header-text-color, var(--hint));
+    --danger: var(--tg-theme-destructive-text-color, #e53935);
+    --line: rgba(127,127,127,.22);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { padding: 12px 12px 96px; max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 6px 4px 14px; }
+  .section { margin: 0 0 16px; }
+  .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--head); margin: 0 6px 6px; }
+  .card { background: var(--card); border-radius: 14px; padding: 4px 14px; }
+  .field { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .field:last-child { border-bottom: 0; }
+  label { display: block; font-size: 13px; color: var(--hint); margin-bottom: 4px; }
+  label .opt { font-size: 12px; opacity: .8; }
+  input, textarea { width: 100%; border: 0; outline: 0; background: transparent; color: var(--text);
+    font: inherit; padding: 2px 0; }
+  input::placeholder, textarea::placeholder { color: var(--hint); opacity: .6; }
+  textarea { resize: none; min-height: 72px; }
+  input[type="date"] { min-height: 28px; -webkit-appearance: none; appearance: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
+  .chip { border: 1px solid var(--line); background: transparent; color: var(--text);
+    border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 15px; cursor: pointer; }
+  .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .note { font-size: 12px; color: var(--hint); margin-top: 4px; }
+  .field.err label { color: var(--danger); }
+  .field.err .chips .chip { border-color: var(--danger); }
+  #fallbackBtn { display: none; position: fixed; left: 12px; right: 12px; bottom: 16px;
+    border: 0; border-radius: 12px; padding: 14px; font: inherit; font-weight: 600;
+    background: var(--accent); color: var(--accent-text); }
+  #toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%);
+    background: rgba(0,0,0,.82); color: #fff; padding: 10px 14px; border-radius: 10px;
+    font-size: 14px; display: none; max-width: 90%; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🏠 Новая сделка</h1>
+
+  <div class="section">
+    <div class="section-title">Клиент</div>
+    <div class="card">
+      <div class="field" data-f="name">
+        <label for="name">Имя</label>
+        <input id="name" maxlength="80" autocomplete="off" placeholder="Иван">
+      </div>
+      <div class="field" data-f="username">
+        <label for="username">Username <span class="opt">(если есть)</span></label>
+        <input id="username" maxlength="40" autocomplete="off" autocapitalize="off" placeholder="@username">
+      </div>
+      <div class="field" data-f="contact">
+        <label for="contact">Контакт</label>
+        <input id="contact" maxlength="80" autocomplete="off" placeholder="+995 5XX XXX XXX">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Квартира</div>
+    <div class="card">
+      <div class="field" data-f="apt">
+        <label for="apt">ID квартиры</label>
+        <input id="apt" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="A-123">
+      </div>
+      <div class="field" data-f="price">
+        <label for="price">Цена квартиры, $</label>
+        <input id="price" maxlength="20" inputmode="decimal" autocomplete="off" placeholder="1200">
+      </div>
+      <div class="field" data-f="owner">
+        <label for="owner">Имя собственника</label>
+        <input id="owner" maxlength="80" autocomplete="off">
+      </div>
+      <div class="field" data-f="ownerContact">
+        <label for="ownerContact">Контакт собственника</label>
+        <input id="ownerContact" maxlength="80" autocomplete="off">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Аренда</div>
+    <div class="card">
+      <div class="field" data-f="term">
+        <label>Срок аренды</label>
+        <div class="chips" data-group="term">
+          <button type="button" class="chip" data-v="6">6 месяцев</button>
+          <button type="button" class="chip" data-v="12">12 месяцев</button>
+        </div>
+      </div>
+      <div class="field row2">
+        <div data-f="start">
+          <label for="start">Дата заезда</label>
+          <input id="start" type="date">
+        </div>
+        <div data-f="end">
+          <label for="end">Дата окончания</label>
+          <input id="end" type="date">
+        </div>
+      </div>
+      <div class="field" style="padding-top:0">
+        <div class="note" id="endNote">Дата окончания посчитается автоматически по сроку — при необходимости её можно поправить.</div>
+      </div>
+      <div class="field" data-f="commission">
+        <label for="commission">Комиссия</label>
+        <input id="commission" maxlength="40" autocomplete="off" placeholder="напр. 600 или 50%">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Команда</div>
+    <div class="card">
+      <div class="field" data-f="negotiator">
+        <label>Переговорщик</label>
+        <div class="chips" data-group="negotiator">
+          <button type="button" class="chip" data-v="Alex">Alex</button>
+          <button type="button" class="chip" data-v="Gio">Gio</button>
+          <button type="button" class="chip" data-v="Vito">Vito</button>
+          <button type="button" class="chip" data-v="Artyom">Artyom</button>
+          <button type="button" class="chip" data-v="HG">HG</button>
+        </div>
+      </div>
+      <div class="field" data-f="presenter">
+        <label>Презентатор</label>
+        <div class="chips" data-group="presenter">
+          <button type="button" class="chip" data-v="Vito">Vito</button>
+          <button type="button" class="chip" data-v="Artyom">Artyom</button>
+          <button type="button" class="chip" data-v="Sasha">Sasha</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Комментарии</div>
+    <div class="card">
+      <div class="field" data-f="comment">
+        <textarea id="comment" maxlength="800" placeholder="Любые детали по сделке"></textarea>
+      </div>
+    </div>
+  </div>
+</main>
+
+<button id="fallbackBtn" type="button">Сохранить сделку</button>
+<div id="toast"></div>
+
+<script>
+(function () {
+  // Обязательные поля. Чтобы сделать поле необязательным — уберите его из списка.
+  var REQUIRED = ['name', 'contact', 'apt', 'price', 'owner', 'ownerContact',
+                  'term', 'start', 'end', 'commission', 'negotiator', 'presenter'];
+
+  var tg = window.Telegram && window.Telegram.WebApp;
+  var inTelegram = !!(tg && tg.initData !== undefined && tg.platform && tg.platform !== 'unknown');
+  var state = { term: '', negotiator: '', presenter: '' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  // --- выбор (чипы) ---
+  document.querySelectorAll('[data-group]').forEach(function (group) {
+    group.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('.chip');
+      if (!btn) return;
+      var key = group.getAttribute('data-group');
+      group.querySelectorAll('.chip').forEach(function (b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      state[key] = btn.getAttribute('data-v');
+      clearErr(key);
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+      if (key === 'term') recalcEnd();
+    });
+  });
+
+  // --- даты ---
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function addMonths(iso, months) {
+    var p = iso.split('-').map(Number);
+    var y = p[0], m = p[1] - 1 + months, d = p[2];
+    y += Math.floor(m / 12); m = m % 12;
+    var last = new Date(y, m + 1, 0).getDate();
+    return y + '-' + pad(m + 1) + '-' + pad(Math.min(d, last));
+  }
+  function recalcEnd() {
+    var start = $('start').value;
+    if (start && state.term) {
+      $('end').value = addMonths(start, Number(state.term));
+      clearErr('end');
+    }
+  }
+  $('start').addEventListener('change', recalcEnd);
+
+  // --- ошибки ---
+  function fieldEl(key) { return document.querySelector('[data-f="' + key + '"]'); }
+  function clearErr(key) { var el = fieldEl(key); if (el) el.classList.remove('err'); }
+  document.querySelectorAll('input, textarea').forEach(function (el) {
+    el.addEventListener('input', function () { clearErr(el.id); });
+  });
+
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.style.display = 'none'; }, 2600);
+  }
+
+  function val(id) { return $(id).value.trim(); }
+
+  function collect() {
+    var username = val('username').replace(/^@+/, '');
+    return {
+      v: 1,
+      uid: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+      name: val('name'),
+      username: username ? '@' + username : '',
+      contact: val('contact'),
+      apt: val('apt'),
+      price: val('price').replace(/\s+/g, '').replace(',', '.').replace(/\$/g, ''),
+      owner: val('owner'),
+      ownerContact: val('ownerContact'),
+      term: state.term,
+      start: $('start').value,
+      end: $('end').value,
+      commission: val('commission'),
+      negotiator: state.negotiator,
+      presenter: state.presenter,
+      comment: val('comment')
+    };
+  }
+
+  function validate(d) {
+    var bad = REQUIRED.filter(function (k) { return !d[k]; });
+    if (d.price && isNaN(Number(d.price))) bad.push('price');
+    if (d.start && d.end && d.end <= d.start) bad.push('end');
+    bad.forEach(function (k) { var el = fieldEl(k); if (el) el.classList.add('err'); });
+    if (bad.length) {
+      var first = fieldEl(bad[0]);
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return bad;
+  }
+
+  function submit() {
+    var d = collect();
+    var bad = validate(d);
+    if (bad.length) {
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+      toast(bad.indexOf('price') > -1 && d.price ? 'Цена должна быть числом'
+          : bad.indexOf('end') > -1 && d.end ? 'Дата окончания должна быть позже заезда'
+          : 'Заполните отмеченные поля');
+      return;
+    }
+    var json = JSON.stringify(d);
+    if (new TextEncoder().encode(json).length > 4000) {
+      toast('Слишком много текста — сократите комментарий');
+      return;
+    }
+    if (!inTelegram) {
+      console.log('Payload:', d);
+      toast('Предпросмотр: откройте форму через кнопку в боте');
+      return;
+    }
+    tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success');
+    tg.sendData(json); // отправляет данные боту и закрывает форму
+  }
+
+  if (inTelegram) {
+    tg.ready();
+    tg.expand();
+    if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+    tg.MainButton.setText('Сохранить сделку');
+    tg.MainButton.onClick(submit);
+    tg.MainButton.show();
+    if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+  } else {
+    $('fallbackBtn').style.display = 'block';
+    $('fallbackBtn').addEventListener('click', submit);
+  }
+})();
+</script>
+</body>
+</html>
